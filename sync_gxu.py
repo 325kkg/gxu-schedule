@@ -281,4 +281,3 @@ if __name__ == "__main__":
     output_obj = encrypt_payload(payload, view_password) if view_password else payload
     CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"成功解析 {len(merged)} 条排课记录（学期共 {payload['total_weeks']} 周，开学周一 {term_start}，{'已加密' if view_password else '未加密'}）！")
-EOF

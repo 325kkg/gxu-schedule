@@ -56,6 +56,7 @@ def decrypt_payload(enc_obj: dict, password: str) -> dict:
 def parse_schedule_html(html: str) -> list:
     soup = BeautifulSoup(html, "html.parser")
     courses = []
+    # 1. 常见带属性单元格
     cells = soup.select("td[data-day], td.kb-cell, .timetable-item, .course-item")
     idx = 0
     for cell in cells:
@@ -84,6 +85,47 @@ def parse_schedule_html(html: str) -> list:
             "changeNote": ""
         })
         idx += 1
+    if courses:
+        return courses
+
+    # 2. 通用星期课表 table 解析（行=节次，列=星期一~星期日）
+    for table in soup.find_all("table"):
+        headers = [th.get_text(strip=True) for th in table.find_all(["th", "td"])[:10]]
+        header_joined = "".join(headers)
+        if "星期" not in header_joined and "周一" not in header_joined:
+            continue
+        rows = table.find_all("tr")
+        for r_idx, tr in enumerate(rows[1:], start=1):
+            tds = tr.find_all(["td", "th"])
+            for c_idx, td in enumerate(tds):
+                txt = td.get_text(" | ", strip=True)
+                if not txt or len(txt) < 4 or "第" in txt[:3] or "节" in txt[:4]:
+                    continue
+                if any(w in txt for w in ["星期", "周一", "周二", "周三", "周四", "周五"]):
+                    continue
+                parts = [p.strip() for p in txt.split("|") if p.strip()]
+                name = parts[0]
+                room = next((p for p in parts[1:] if any(k in p for k in ["楼", "室", "馆", "厅", "区"])), parts[1] if len(parts) > 1 else "待定教室")
+                teacher = next((p for p in parts[1:] if p != room and len(p) <= 5), "")
+                week_match = re.search(r"(\d+-\d+(?:,\d+-\d+)*)", txt)
+                weeks = week_match.group(1) if week_match else "1-16"
+                rowspan = int(td.get("rowspan") or 2)
+                day = min(7, max(1, c_idx))
+                start_p = min(12, max(1, r_idx))
+                end_p = min(12, start_p + rowspan - 1)
+                courses.append({
+                    "id": f"gxu_{day}_{start_p}_{idx}",
+                    "name": name,
+                    "room": room,
+                    "teacher": teacher,
+                    "day": day,
+                    "startPeriod": start_p,
+                    "endPeriod": end_p,
+                    "weeks": weeks,
+                    "color": COLORS[idx % len(COLORS)],
+                    "changeNote": ""
+                })
+                idx += 1
     return courses
 
 
@@ -169,13 +211,25 @@ def fetch_from_gxu() -> list:
                 err_text = page.locator(".error, .err-msg, #errormsg, .alert-danger").all_inner_texts()
                 raise RuntimeError(f"统一身份认证未通过，当前停留在 {page.url}，页面提示: {err_text}")
 
-        # 尝试自动点击“课表”相关菜单
-        kb_link = page.locator("a:has-text('课表'), span:has-text('课表'), li:has-text('我的课表')").first
-        if kb_link.count() > 0 and kb_link.is_visible():
-            print("找到课表菜单，正在点击进入...")
-            kb_link.click()
+        # 第一步：先点「我的培养」菜单
+        py_link = page.locator("a:has-text('我的培养'), span:has-text('我的培养'), li:has-text('我的培养')").first
+        if py_link.count() > 0 and py_link.is_visible():
+            print("点击「我的培养」...")
+            py_link.click()
             page.wait_for_timeout(3000)
             page.wait_for_load_state("networkidle")
+
+        # 第二步：在子菜单或页面里找「课表」相关入口
+        kb_link = page.locator("a:has-text('课表'), span:has-text('课表'), li:has-text('课表'), div.title:has-text('课表')").first
+        if kb_link.count() > 0 and kb_link.is_visible():
+            print(f"找到课表入口「{kb_link.inner_text().strip()}」，正在点击进入...")
+            kb_link.click()
+            page.wait_for_timeout(4000)
+            page.wait_for_load_state("networkidle")
+            print(f"进入课表后 URL: {page.url}")
+        else:
+            links = [a.inner_text().strip() for a in page.locator("a:visible").all()[:40]]
+            print("「我的培养」下可见链接:", [x for x in links if x])
 
         # 收集主页面和所有 iframe 的 HTML 进行解析
         all_html = [page.content()]
@@ -192,8 +246,7 @@ def fetch_from_gxu() -> list:
                 courses.extend(parsed)
 
         if not courses:
-            links = [a.inner_text().strip() for a in page.locator("a:visible").all()[:25]]
-            print("未检测到课表元素，当前页面可见链接示例:", [x for x in links if x])
+            print("课表页文本摘要（用于调试）:", page.locator("body").inner_text()[:600].replace("\n", " | "))
 
         browser.close()
         return courses
@@ -214,7 +267,7 @@ if __name__ == "__main__":
 
     new_courses = fetch_from_gxu()
     if not new_courses:
-        print("登录成功，但暂未在当前页面解析到课表元素，请查看上方打印的页面 URL 和链接列表。")
+        print("登录成功，但暂未在当前页面解析到课表元素，请查看上方打印的页面链接和文本摘要。")
     else:
         merged, new_logs = diff_courses(old_courses, new_courses)
         payload = {
@@ -226,4 +279,3 @@ if __name__ == "__main__":
         output_obj = encrypt_payload(payload, view_password) if view_password else payload
         CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"成功更新 {len(merged)} 门课程（{'已加密' if view_password else '未加密'}）！")
-EOF

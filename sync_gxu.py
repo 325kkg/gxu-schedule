@@ -141,29 +141,62 @@ def fetch_from_gxu() -> list:
         page = context.new_page()
         page.goto(GXU_YJS_URL, timeout=60000)
         page.wait_for_load_state("networkidle")
+        print(f"当前页面 URL: {page.url} | 标题: {page.title()}")
 
-        if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url:
-            user_input = page.locator("input[name='username'], input#username, input[type='text']").first
-            pwd_input = page.locator("input[name='password'], input#password, input[type='password']").first
+        if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url or "login" in page.url.lower():
+            user_input = page.locator("input[name='username']:visible, input#username:visible, input#un:visible, input[type='text']:visible").first
+            pwd_input = page.locator("input[name='password']:visible, input#password:visible, input#pd:visible, input[type='password']:visible").first
             user_input.fill(username)
             pwd_input.fill(password)
 
-            captcha_img = page.locator("img[src*='captcha'], img[src*='code'], img#captchaImg").first
-            captcha_input = page.locator("input[name='captcha'], input#captcha, input[placeholder*='验证码']").first
-            if captcha_img.count() > 0 and captcha_input.count() > 0:
+            captcha_img = page.locator("img[src*='captcha']:visible, img[src*='code']:visible, img#captchaImg:visible, img#codeImg:visible").first
+            captcha_input = page.locator("input[name='captcha']:visible, input#captcha:visible, input[placeholder*='验证码']:visible").first
+            if captcha_img.count() > 0 and captcha_img.is_visible() and captcha_input.count() > 0 and captcha_input.is_visible():
                 code = try_ocr_captcha(captcha_img.screenshot())
+                print(f"识别到图形验证码: {code}")
                 if code:
                     captcha_input.fill(code)
+            else:
+                print("当前登录页未显示图形验证码，直接提交账号密码。")
 
-            page.locator("button[type='submit'], input[type='submit'], .login-btn, #loginBtn").first.click()
-            page.wait_for_timeout(4000)
+            login_btn = page.locator("button[type='submit']:visible, input[type='submit']:visible, .login-btn:visible, #loginBtn:visible, #index_login_btn:visible, a.login_btn:visible").first
+            login_btn.click()
+            page.wait_for_timeout(5000)
+            page.wait_for_load_state("networkidle")
+            print(f"登录后页面 URL: {page.url} | 标题: {page.title()}")
 
-            if "ca.gxu.edu.cn" in page.url:
-                raise RuntimeError(f"统一身份认证未通过（可能触发了短信二次验证或滑块验证码），当前停留在：{page.url}")
+            if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url:
+                err_text = page.locator(".error, .err-msg, #errormsg, .alert-danger").all_inner_texts()
+                raise RuntimeError(f"统一身份认证未通过，当前停留在 {page.url}，页面提示: {err_text}")
 
-        html = page.content()
+        # 尝试自动点击“课表”相关菜单
+        kb_link = page.locator("a:has-text('课表'), span:has-text('课表'), li:has-text('我的课表')").first
+        if kb_link.count() > 0 and kb_link.is_visible():
+            print("找到课表菜单，正在点击进入...")
+            kb_link.click()
+            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle")
+
+        # 收集主页面和所有 iframe 的 HTML 进行解析
+        all_html = [page.content()]
+        for frame in page.frames:
+            try:
+                all_html.append(frame.content())
+            except Exception:
+                pass
+
+        courses = []
+        for h in all_html:
+            parsed = parse_schedule_html(h)
+            if parsed:
+                courses.extend(parsed)
+
+        if not courses:
+            links = [a.inner_text().strip() for a in page.locator("a:visible").all()[:25]]
+            print("未检测到课表元素，当前页面可见链接示例:", [x for x in links if x])
+
         browser.close()
-        return parse_schedule_html(html)
+        return courses
 
 
 if __name__ == "__main__":
@@ -181,7 +214,7 @@ if __name__ == "__main__":
 
     new_courses = fetch_from_gxu()
     if not new_courses:
-        print("登录成功，但未在首页检测到课表元素（可能需进入子菜单 URL）。")
+        print("登录成功，但暂未在当前页面解析到课表元素，请查看上方打印的页面 URL 和链接列表。")
     else:
         merged, new_logs = diff_courses(old_courses, new_courses)
         payload = {
@@ -193,3 +226,4 @@ if __name__ == "__main__":
         output_obj = encrypt_payload(payload, view_password) if view_password else payload
         CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"成功更新 {len(merged)} 门课程（{'已加密' if view_password else '未加密'}）！")
+EOF

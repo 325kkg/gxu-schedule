@@ -376,6 +376,7 @@
 
     let state = {
       termStart: '2026-09-07',
+      totalWeeks: 20,
       currentWeek: 10,
       viewMode: 'week',
       selectedDay: 1,
@@ -443,6 +444,7 @@
       if (!Array.isArray(arr) || arr.length === 0) return false;
       state.courses = arr;
       if (data.term_start) state.termStart = data.term_start;
+      if (data.total_weeks) state.totalWeeks = Number(data.total_weeks) || 20;
       if (Array.isArray(data.change_logs)) state.changeLogs = data.change_logs;
       state.sourceMode = modeLabel;
       state.lastSync = data.updated_at ? new Date(data.updated_at).toLocaleString('zh-CN', { hour12: false }) : new Date().toLocaleString('zh-CN', { hour12: false });
@@ -451,12 +453,20 @@
       return true;
     }
 
+    function formatLocalYMD(dt) {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const d = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
     function computeRealCurrentWeek() {
       if (!state.termStart) return 1;
       const start = new Date(state.termStart + 'T00:00:00');
       const now = new Date();
       const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-      return Math.min(20, Math.max(1, Math.floor(diffDays / 7) + 1));
+      const maxW = Number(state.totalWeeks) || 20;
+      return Math.min(maxW, Math.max(1, Math.floor(diffDays / 7) + 1));
     }
 
     function parseWeeks(weekStr) {
@@ -538,7 +548,8 @@
       const sel = document.getElementById('weekSelect');
       const realWeek = computeRealCurrentWeek();
       sel.innerHTML = '';
-      for (let w = 1; w <= 20; w++) {
+      const maxW = Number(state.totalWeeks) || 20;
+      for (let w = 1; w <= maxW; w++) {
         const opt = document.createElement('option');
         opt.value = w;
         opt.textContent = w === realWeek ? `第 ${w} 周（本周）` : `第 ${w} 周`;
@@ -552,13 +563,13 @@
       const periodCol = document.getElementById('periodColumn');
       const daysGrid = document.getElementById('daysGrid');
       const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = formatLocalYMD(new Date());
 
       const monthLabel = getDateForWeekDay(state.currentWeek, 1).getMonth() + 1;
       let headerHtml = `<div class="py-2.5 px-1 text-center text-xs font-semibold text-slate-500 border-r border-slate-200 flex flex-col justify-center">${monthLabel}月</div>`;
       for (let d = 1; d <= 7; d++) {
         const dt = getDateForWeekDay(state.currentWeek, d);
-        const dtStr = dt.toISOString().slice(0, 10);
+        const dtStr = formatLocalYMD(dt);
         const isToday = dtStr === todayStr;
         headerHtml += `
           <div class="py-2 px-1 text-center border-r border-slate-100 last:border-r-0 ${isToday ? 'bg-blue-50/80' : ''}">
@@ -581,7 +592,7 @@
       let gridHtml = '';
       for (let d = 1; d <= 7; d++) {
         const dayCourses = state.courses.filter(c => Number(c.day) === d && isCourseInWeek(c, state.currentWeek));
-        const dtStr = getDateForWeekDay(state.currentWeek, d).toISOString().slice(0, 10);
+        const dtStr = formatLocalYMD(getDateForWeekDay(state.currentWeek, d));
         const isToday = dtStr === todayStr;
 
         let cellsHtml = '';
@@ -826,7 +837,7 @@
 
     function bindEvents() {
       document.getElementById('btnPrevWeek').addEventListener('click', () => { if (state.currentWeek > 1) { state.currentWeek--; renderAll(); } });
-      document.getElementById('btnNextWeek').addEventListener('click', () => { if (state.currentWeek < 20) { state.currentWeek++; renderAll(); } });
+      document.getElementById('btnNextWeek').addEventListener('click', () => { if (state.currentWeek < (Number(state.totalWeeks) || 20)) { state.currentWeek++; renderAll(); } });
       document.getElementById('btnCurrentWeek').addEventListener('click', () => { state.currentWeek = computeRealCurrentWeek(); renderAll(); });
       document.getElementById('weekSelect').addEventListener('change', e => { state.currentWeek = Number(e.target.value); renderAll(); });
       document.getElementById('tabWeekView').addEventListener('click', () => { state.viewMode = 'week'; safeSaveState(); renderAll(); });

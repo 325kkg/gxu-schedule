@@ -1,6 +1,8 @@
 """
-广西大学研究生综合管理系统 -> GitHub Actions 云端自动同步脚本
+广西大学研究生综合管理系统 -> GitHub Actions 加密同步脚本
+支持 AES-GCM 加密写入 schedule.json，防止公开仓库泄露课表隐私
 """
+import base64
 import json
 import os
 import re
@@ -8,10 +10,47 @@ from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 GXU_YJS_URL = "https://yjsxt.gxu.edu.cn/tp/"
 CACHE_FILE = Path(__file__).parent / "schedule.json"
 COLORS = ["blue", "indigo", "emerald", "amber", "rose", "teal"]
+
+
+def derive_key(password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    return kdf.derive(password.encode("utf-8"))
+
+
+def encrypt_payload(payload: dict, password: str) -> dict:
+    salt = os.urandom(16)
+    nonce = os.urandom(12)
+    key = derive_key(password, salt)
+    plaintext = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
+    return {
+        "encrypted": True,
+        "salt": base64.b64encode(salt).decode("ascii"),
+        "nonce": base64.b64encode(nonce).decode("ascii"),
+        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+        "updated_at": payload.get("updated_at", "")
+    }
+
+
+def decrypt_payload(enc_obj: dict, password: str) -> dict:
+    salt = base64.b64decode(enc_obj["salt"])
+    nonce = base64.b64decode(enc_obj["nonce"])
+    ciphertext = base64.b64decode(enc_obj["ciphertext"])
+    key = derive_key(password, salt)
+    plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
+    return json.loads(plaintext.decode("utf-8"))
 
 
 def parse_schedule_html(html: str) -> list:
@@ -103,7 +142,6 @@ def fetch_from_gxu() -> list:
         page.goto(GXU_YJS_URL, timeout=60000)
         page.wait_for_load_state("networkidle")
 
-        # 若跳转至统一身份认证平台
         if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url:
             user_input = page.locator("input[name='username'], input#username, input[type='text']").first
             pwd_input = page.locator("input[name='password'], input#password, input[type='password']").first
@@ -129,11 +167,17 @@ def fetch_from_gxu() -> list:
 
 
 if __name__ == "__main__":
+    view_password = os.getenv("VIEW_PASSWORD", "").strip()
     old_courses, old_logs = [], []
     if CACHE_FILE.exists():
-        old_data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-        old_courses = old_data.get("courses", [])
-        old_logs = old_data.get("change_logs", [])
+        try:
+            old_data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            if old_data.get("encrypted") and view_password:
+                old_data = decrypt_payload(old_data, view_password)
+            old_courses = old_data.get("courses", [])
+            old_logs = old_data.get("change_logs", [])
+        except Exception:
+            pass
 
     new_courses = fetch_from_gxu()
     if not new_courses:
@@ -146,5 +190,6 @@ if __name__ == "__main__":
             "courses": merged,
             "change_logs": (new_logs + old_logs)[:20]
         }
-        CACHE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"成功更新 {len(merged)} 门课程！")
+        output_obj = encrypt_payload(payload, view_password) if view_password else payload
+        CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"成功更新 {len(merged)} 门课程（{'已加密' if view_password else '未加密'}）！")

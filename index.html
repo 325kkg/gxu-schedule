@@ -72,7 +72,7 @@
         </button>
         <button id="btnSettings" type="button" class="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          <span class="hidden sm:inline">同步设置</span>
+          <span class="hidden sm:inline">设置</span>
         </button>
       </div>
     </div>
@@ -116,11 +116,11 @@
     <!-- 提示横幅 -->
     <div id="setupBanner" class="mb-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
       <div class="text-xs sm:text-sm text-slate-700">
-        <span class="font-semibold text-blue-800">免数据库方案：</span>
-        将 <code class="text-blue-700">index.html</code> 与 <code class="text-blue-700">schedule.json</code> 放到同一个 GitHub Pages 仓库即可零配置自动同步；当前预览显示示例课表。
+        <span class="font-semibold text-blue-800">隐私加密方案：</span>
+        支持 AES-GCM 加密存储课表，别人打开网址也无法偷看；当前预览显示示例课表。
       </div>
       <div class="flex items-center gap-2">
-        <button id="btnBannerSetup" type="button" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">同步说明</button>
+        <button id="btnBannerSetup" type="button" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition">同步设置</button>
         <button id="btnCloseBanner" type="button" class="text-slate-400 hover:text-slate-600 text-xs px-1">隐藏</button>
       </div>
     </div>
@@ -157,6 +157,33 @@
       </div>
     </div>
   </main>
+
+  <!-- 解锁加密课表弹窗 -->
+  <div id="unlockModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <form id="unlockForm" class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">课表已加密保护</h3>
+          <p class="text-xs text-slate-500">请输入你设置的查看密码以解密</p>
+        </div>
+      </div>
+      <div>
+        <input id="unlockPasswordInput" type="password" required placeholder="输入查看密码" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p id="unlockErrorText" class="hidden text-xs text-rose-600 mt-1.5">密码不正确，请重试</p>
+      </div>
+      <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+        <input id="rememberUnlockPwd" type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+        在本设备记住密码（下次打开免输入）
+      </label>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button id="btnCancelUnlock" type="button" class="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100">先看示例</button>
+        <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition">解锁课表</button>
+      </div>
+    </form>
+  </div>
 
   <!-- 课程详情弹窗 -->
   <div id="detailModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -263,25 +290,25 @@
     </div>
   </div>
 
-  <!-- 同步设置与数据管理弹窗（免 Supabase） -->
+  <!-- 同步设置与数据管理弹窗 -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-bold text-slate-900">同步设置（GitHub Pages 免费直连）</h3>
+        <h3 class="text-lg font-bold text-slate-900">同步与隐私设置</h3>
         <button id="btnCloseSettings" type="button" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
       <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-        <p class="font-semibold text-slate-800">工作原理（100% 免费，无需 Supabase）</p>
-        <p>网页托管在 GitHub Pages 时，默认自动读取同目录下的 <code class="text-blue-700">schedule.json</code>（或你指定的 Gist Raw 链接）。电脑上的 <code class="text-blue-700">sync_gxu.py</code> 抓取广西大学研究生系统最新课表后，会自动把 <code class="text-blue-700">schedule.json</code> 推送到你的 GitHub 仓库。</p>
+        <p class="font-semibold text-slate-800">隐私加密保护说明</p>
+        <p>当你在 GitHub Secrets 中配置了 <code class="text-blue-700">VIEW_PASSWORD</code> 后，云端会把课表内容加密成乱码存入 <code class="text-blue-700">schedule.json</code>。他人即使打开网址也无法看到课程内容，仅你的设备输入查看密码后可本地解密。</p>
       </div>
 
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">课表 JSON 地址（留空则自动读取同目录 ./schedule.json）</label>
-          <input id="cfgJsonUrl" type="url" placeholder="./schedule.json 或 GitHub Gist Raw 链接" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+          <input id="cfgJsonUrl" type="url" placeholder="./schedule.json" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">第 1 周周一日期</label>
@@ -289,6 +316,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-1">
           <button id="btnSaveAndSync" type="button" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">保存并立即拉取</button>
+          <button id="btnLockDevice" type="button" class="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-sm font-medium hover:bg-amber-100 transition">锁定并清除本机密码</button>
           <button id="btnResetDemo" type="button" class="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition">恢复示例课表</button>
         </div>
       </div>
@@ -310,7 +338,6 @@
   <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-medium shadow-lg transition-opacity"></div>
 
   <script>
-    // 广西大学官方学生上课时间表（https://jwc.gxu.edu.cn/info/1323/1551.htm）
     const GXU_PERIODS = [
       { id: 1, label: '1', start: '08:00', end: '08:45' },
       { id: 2, label: '2', start: '08:55', end: '09:40' },
@@ -344,16 +371,17 @@
       { id: 'c6', name: '工程伦理与学术规范', room: '大礼堂报告厅', teacher: '示范教师 E', day: 5, startPeriod: 11, endPeriod: 12, weeks: '1-8', color: 'rose', changeNote: '' }
     ];
 
-    const STORAGE_KEY = 'gxu_grad_schedule_v2';
+    const STORAGE_KEY = 'gxu_grad_schedule_v3';
 
     let state = {
       termStart: '2026-09-07',
       currentWeek: 10,
       viewMode: 'week',
       selectedDay: 1,
-      sourceMode: 'demo', // 'demo' | 'github' | 'local'
+      sourceMode: 'demo',
       lastSync: null,
       jsonUrl: '',
+      viewPassword: '',
       courses: JSON.parse(JSON.stringify(DEMO_COURSES)),
       changeLogs: [
         { time: '示例通知', message: '《现代电力电子技术》上课教室已更新为 电气工程学院楼 405' },
@@ -361,6 +389,8 @@
       ],
       activeCourseId: null
     };
+
+    let pendingEncryptedPayload = null;
 
     function safeLoadState() {
       try {
@@ -378,6 +408,46 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) {}
+    }
+
+    function b64ToBytes(b64) {
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return arr;
+    }
+
+    async function decryptSchedulePayload(encObj, password) {
+      const enc = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.importKey(
+        'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+      );
+      const aesKey = await window.crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: b64ToBytes(encObj.salt), iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+      const plainBuf = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: b64ToBytes(encObj.nonce) },
+        aesKey,
+        b64ToBytes(encObj.ciphertext)
+      );
+      return JSON.parse(new TextDecoder().decode(plainBuf));
+    }
+
+    function applyScheduleData(data, modeLabel = 'github') {
+      const arr = Array.isArray(data) ? data : (data.courses || []);
+      if (!Array.isArray(arr) || arr.length === 0) return false;
+      state.courses = arr;
+      if (data.term_start) state.termStart = data.term_start;
+      if (Array.isArray(data.change_logs)) state.changeLogs = data.change_logs;
+      state.sourceMode = modeLabel;
+      state.lastSync = data.updated_at ? new Date(data.updated_at).toLocaleString('zh-CN', { hour12: false }) : new Date().toLocaleString('zh-CN', { hour12: false });
+      safeSaveState();
+      renderAll();
+      return true;
     }
 
     function computeRealCurrentWeek() {
@@ -671,19 +741,32 @@
         const res = await fetch(`${urlToFetch}${sep}t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const arr = Array.isArray(data) ? data : (data.courses || []);
-        if (!Array.isArray(arr) || arr.length === 0) {
-          if (!silent) showToast('仓库中的 schedule.json 暂为空，请先运行 sync_gxu.py 抓取课表');
+
+        if (data && data.encrypted) {
+          pendingEncryptedPayload = data;
+          if (state.viewPassword) {
+            try {
+              const decrypted = await decryptSchedulePayload(data, state.viewPassword);
+              applyScheduleData(decrypted, 'github');
+              if (!silent) showToast('已解密并同步最新课表');
+              return;
+            } catch (err) {
+              state.viewPassword = '';
+              safeSaveState();
+            }
+          }
+          document.getElementById('unlockErrorText').classList.add('hidden');
+          document.getElementById('unlockPasswordInput').value = '';
+          document.getElementById('unlockModal').classList.remove('hidden');
           return;
         }
-        state.courses = arr;
-        if (data.term_start) state.termStart = data.term_start;
-        if (Array.isArray(data.change_logs)) state.changeLogs = data.change_logs;
-        state.sourceMode = 'github';
-        state.lastSync = data.updated_at ? new Date(data.updated_at).toLocaleString('zh-CN', { hour12: false }) : new Date().toLocaleString('zh-CN', { hour12: false });
-        safeSaveState();
-        renderAll();
-        if (!silent) showToast('已同步最新课表');
+
+        const ok = applyScheduleData(data, 'github');
+        if (!ok && !silent) {
+          showToast('仓库中的 schedule.json 暂为空，请先运行同步');
+        } else if (ok && !silent) {
+          showToast('已同步最新课表');
+        }
       } catch (err) {
         if (!silent) showToast(`暂未读取到课表文件：${err.message}`);
       } finally {
@@ -759,6 +842,26 @@
         if (card) openDetailModal(card.dataset.courseId);
       });
 
+      document.getElementById('unlockForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!pendingEncryptedPayload) return;
+        const pwd = document.getElementById('unlockPasswordInput').value;
+        try {
+          const decrypted = await decryptSchedulePayload(pendingEncryptedPayload, pwd);
+          if (document.getElementById('rememberUnlockPwd').checked) {
+            state.viewPassword = pwd;
+          }
+          document.getElementById('unlockModal').classList.add('hidden');
+          applyScheduleData(decrypted, 'github');
+          showToast('解锁成功');
+        } catch (err) {
+          document.getElementById('unlockErrorText').classList.remove('hidden');
+        }
+      });
+      document.getElementById('btnCancelUnlock').addEventListener('click', () => {
+        document.getElementById('unlockModal').classList.add('hidden');
+      });
+
       document.getElementById('btnAddCourse').addEventListener('click', () => openEditModal());
       document.getElementById('btnCloseDetail').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
       document.getElementById('btnEditCourse').addEventListener('click', () => {
@@ -830,6 +933,16 @@
         syncFromJsonEndpoint(false);
       });
 
+      document.getElementById('btnLockDevice').addEventListener('click', () => {
+        state.viewPassword = '';
+        state.courses = JSON.parse(JSON.stringify(DEMO_COURSES));
+        state.sourceMode = 'demo';
+        safeSaveState();
+        renderAll();
+        document.getElementById('settingsModal').classList.add('hidden');
+        showToast('已清除本机保存的密码并恢复示例数据');
+      });
+
       document.getElementById('btnResetDemo').addEventListener('click', () => {
         state.courses = JSON.parse(JSON.stringify(DEMO_COURSES));
         state.sourceMode = 'demo';
@@ -850,16 +963,10 @@
         reader.onload = ev => {
           try {
             const data = JSON.parse(ev.target.result);
-            const arr = Array.isArray(data) ? data : (data.courses || []);
-            if (!Array.isArray(arr) || arr.length === 0) throw new Error('JSON 中未找到课程数组');
-            state.courses = arr;
-            if (data.term_start) state.termStart = data.term_start;
-            if (Array.isArray(data.change_logs)) state.changeLogs = data.change_logs;
-            state.sourceMode = 'local';
-            state.lastSync = new Date().toLocaleString('zh-CN', { hour12: false });
-            safeSaveState(); renderAll();
+            const ok = applyScheduleData(data, 'local');
+            if (!ok) throw new Error('JSON 中未找到课程数组');
             document.getElementById('settingsModal').classList.add('hidden');
-            showToast(`成功导入 ${arr.length} 门课程`);
+            showToast(`成功导入 ${state.courses.length} 门课程`);
           } catch (err) {
             showToast(`导入失败：${err.message}`);
           }

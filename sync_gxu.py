@@ -1,12 +1,12 @@
 """
 广西大学研究生综合管理系统 -> GitHub Actions 加密同步脚本
-支持 AES-GCM 加密写入 schedule.json，防止公开仓库泄露课表隐私
+直接对接 yjsxt.gxu.edu.cn/tp/ 的课表接口，精准解析每周课表、教师、教室与调停课记录
 """
 import base64
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -14,9 +14,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-GXU_YJS_URL = "https://yjsxt.gxu.edu.cn/tp/"
+GXU_KB_URL = "https://yjsxt.gxu.edu.cn/tp/view?m=up#act=yjs/py/pkgl/ckkbOfYjs"
 CACHE_FILE = Path(__file__).parent / "schedule.json"
 COLORS = ["blue", "indigo", "emerald", "amber", "rose", "teal"]
+DAY_MAP = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "日": 7, "天": 7}
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
@@ -53,101 +54,102 @@ def decrypt_payload(enc_obj: dict, password: str) -> dict:
     return json.loads(plaintext.decode("utf-8"))
 
 
-def parse_schedule_html(html: str) -> list:
-    soup = BeautifulSoup(html, "html.parser")
+def parse_sksjdd_records(records: list) -> tuple[list, int]:
+    """
+    解析广西大学研究生系统课程列表（来自 #xsDataTable 或 findXkmdByXsPage 接口）。
+    每条记录包含课程名 kcmc、任课教师 rkjs/pkjs、上课时间地点 sksjdd。
+    """
     courses = []
-    # 1. 常见带属性单元格
-    cells = soup.select("td[data-day], td.kb-cell, .timetable-item, .course-item")
-    idx = 0
-    for cell in cells:
-        text = cell.get_text(" | ", strip=True)
-        if not text or len(text) < 2:
+    max_week = 19
+    color_map = {}
+    color_idx = 0
+
+    pattern = re.compile(
+        r"第([0-9\-、,，]+?)周\s+星期([一二三四五六日天])\s+第(\d+)(?:-(\d+))?节\s+(\S+)\s+([^;；\s]+)"
+    )
+
+    for item in records:
+        name = (item.get("kcmc") or "").strip()
+        if not name:
             continue
-        day = int(cell.get("data-day") or 1)
-        start_p = int(cell.get("data-start") or 1)
-        end_p = int(cell.get("data-end") or start_p + 1)
-        parts = [p.strip() for p in text.split("|") if p.strip()]
-        name = parts[0]
-        room = next((p for p in parts[1:] if any(k in p for k in ["楼", "室", "馆", "厅", "区"])), parts[1] if len(parts) > 1 else "待定教室")
-        teacher = next((p for p in parts[1:] if "师" in p or (len(p) <= 4 and p != room)), "")
-        week_match = re.search(r"(\d+-\d+(?:,\d+-\d+)*)", text)
-        weeks = week_match.group(1) if week_match else "1-16"
-        courses.append({
-            "id": f"gxu_{day}_{start_p}_{idx}",
-            "name": name,
-            "room": room,
-            "teacher": teacher,
-            "day": day,
-            "startPeriod": start_p,
-            "endPeriod": end_p,
-            "weeks": weeks,
-            "color": COLORS[idx % len(COLORS)],
-            "changeNote": ""
-        })
-        idx += 1
-    if courses:
-        return courses
+        if name not in color_map:
+            color_map[name] = COLORS[color_idx % len(COLORS)]
+            color_idx += 1
+        color = color_map[name]
+        fallback_teacher = (item.get("pkjs") or item.get("rkjs") or "").strip()
+        sksjdd = (item.get("sksjdd") or "").strip()
 
-    # 2. 通用星期课表 table 解析（行=节次，列=星期一~星期日）
-    for table in soup.find_all("table"):
-        headers = [th.get_text(strip=True) for th in table.find_all(["th", "td"])[:10]]
-        header_joined = "".join(headers)
-        if "星期" not in header_joined and "周一" not in header_joined:
+        matches = list(pattern.finditer(sksjdd))
+        for m_idx, m in enumerate(matches):
+            raw_weeks, day_ch, sp_str, ep_str, room, teacher = m.groups()
+            weeks_clean = raw_weeks.replace("、", ",").replace("，", ",")
+            for num in re.findall(r"\d+", weeks_clean):
+                max_week = max(max_week, int(num))
+            day = DAY_MAP.get(day_ch, 1)
+            sp = max(1, min(13, int(sp_str)))
+            ep = max(sp, min(13, int(ep_str or sp_str)))
+            courses.append({
+                "id": f"gxu_{day}_{sp}_{len(courses)}_{m_idx}",
+                "name": name,
+                "room": room.strip(),
+                "teacher": (teacher or fallback_teacher).strip(),
+                "day": day,
+                "startPeriod": sp,
+                "endPeriod": ep,
+                "weeks": weeks_clean,
+                "color": color,
+                "changeNote": ""
+            })
+
+    return courses, max_week
+
+
+def parse_xs_table_from_html(html: str) -> tuple[list, int]:
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.select_one("#xsDataTable")
+    if not table:
+        return [], 19
+    records = []
+    for tr in table.select("tbody tr"):
+        tds = tr.find_all("td")
+        if len(tds) < 7:
             continue
-        rows = table.find_all("tr")
-        for r_idx, tr in enumerate(rows[1:], start=1):
-            tds = tr.find_all(["td", "th"])
-            for c_idx, td in enumerate(tds):
-                txt = td.get_text(" | ", strip=True)
-                if not txt or len(txt) < 4 or "第" in txt[:3] or "节" in txt[:4]:
-                    continue
-                if any(w in txt for w in ["星期", "周一", "周二", "周三", "周四", "周五"]):
-                    continue
-                parts = [p.strip() for p in txt.split("|") if p.strip()]
-                name = parts[0]
-                room = next((p for p in parts[1:] if any(k in p for k in ["楼", "室", "馆", "厅", "区"])), parts[1] if len(parts) > 1 else "待定教室")
-                teacher = next((p for p in parts[1:] if p != room and len(p) <= 5), "")
-                week_match = re.search(r"(\d+-\d+(?:,\d+-\d+)*)", txt)
-                weeks = week_match.group(1) if week_match else "1-16"
-                rowspan = int(td.get("rowspan") or 2)
-                day = min(7, max(1, c_idx))
-                start_p = min(12, max(1, r_idx))
-                end_p = min(12, start_p + rowspan - 1)
-                courses.append({
-                    "id": f"gxu_{day}_{start_p}_{idx}",
-                    "name": name,
-                    "room": room,
-                    "teacher": teacher,
-                    "day": day,
-                    "startPeriod": start_p,
-                    "endPeriod": end_p,
-                    "weeks": weeks,
-                    "color": COLORS[idx % len(COLORS)],
-                    "changeNote": ""
-                })
-                idx += 1
-    return courses
+        kcmc = tds[2].get_text(strip=True).replace("课程名称：", "")
+        sksjdd = tds[5].get_text(strip=True).replace("上课时间、地点：", "")
+        rkjs = tds[6].get_text(strip=True).replace("任课教师：", "")
+        records.append({"kcmc": kcmc, "sksjdd": sksjdd, "rkjs": rkjs})
+    return parse_sksjdd_records(records)
 
 
-def diff_courses(old_list: list, new_list: list) -> tuple[list, list]:
-    old_map = {c["name"]: c for c in old_list}
+def diff_courses(old_list: list, new_list: list, official_ttk: list) -> tuple[list, list]:
+    old_sig = {f"{c['name']}|{c['day']}|{c['startPeriod']}|{c['weeks']}": c for c in old_list}
     logs = []
     now_str = datetime.now().strftime("%m-%d %H:%M")
+
+    # 1. 纳入官方调停课记录
+    ttk_names = {}
+    for t in official_ttk:
+        kcmc = (t.get("kcmc") or "").strip()
+        msg = f"{t.get('sqlxmc', '调课')}：原[{t.get('ysksjdd', '')}] → 现[{t.get('tzhsksjdd', '')}]"
+        if kcmc:
+            ttk_names[kcmc] = msg
+            logs.append({"time": "官方调停课", "message": f"《{kcmc}》{msg}"})
+
+    # 2. 对比本地历史变动
     for c in new_list:
-        prev = old_map.get(c["name"])
-        if not prev:
-            c["changeNote"] = "新增课程"
-            logs.append({"time": now_str, "message": f"新增课程：《{c['name']}》"})
-        else:
-            diffs = []
-            if prev.get("room") != c.get("room"):
-                diffs.append(f"教室由 {prev.get('room')} 改为 {c.get('room')}")
-            if prev.get("day") != c.get("day") or prev.get("startPeriod") != c.get("startPeriod"):
-                diffs.append(f"时间由周{prev.get('day')}第{prev.get('startPeriod')}-{prev.get('endPeriod')}节调至周{c.get('day')}第{c.get('startPeriod')}-{c.get('endPeriod')}节")
-            if diffs:
-                note = "；".join(diffs)
-                c["changeNote"] = note
-                logs.append({"time": now_str, "message": f"《{c['name']}》{note}"})
+        if c["name"] in ttk_names:
+            c["changeNote"] = ttk_names[c["name"]]
+            continue
+        sig = f"{c['name']}|{c['day']}|{c['startPeriod']}|{c['weeks']}"
+        prev = old_sig.get(sig)
+        if old_list and not prev:
+            c["changeNote"] = "课程时间或周次有更新"
+            logs.append({"time": now_str, "message": f"《{c['name']}》周{c['day']}第{c['startPeriod']}-{c['endPeriod']}节（第{c['weeks']}周）有更新"})
+        elif prev and prev.get("room") != c.get("room"):
+            note = f"教室由 {prev.get('room')} 改为 {c.get('room')}"
+            c["changeNote"] = note
+            logs.append({"time": now_str, "message": f"《{c['name']}》{note}"})
+
     return new_list, logs
 
 
@@ -160,7 +162,7 @@ def try_ocr_captcha(img_bytes: bytes) -> str:
         return ""
 
 
-def fetch_from_gxu() -> list:
+def fetch_from_gxu() -> tuple[list, list, str, int]:
     username = os.getenv("GXU_USERNAME", "").strip()
     password = os.getenv("GXU_PASSWORD", "").strip()
     cookie_str = os.getenv("GXU_COOKIE", "").strip()
@@ -181,9 +183,8 @@ def fetch_from_gxu() -> list:
                 context.add_cookies(cookies)
 
         page = context.new_page()
-        page.goto(GXU_YJS_URL, timeout=60000)
+        page.goto(GXU_KB_URL, timeout=60000)
         page.wait_for_load_state("networkidle")
-        print(f"当前页面 URL: {page.url} | 标题: {page.title()}")
 
         if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url or "login" in page.url.lower():
             user_input = page.locator("input[name='username']:visible, input#username:visible, input#un:visible, input[type='text']:visible").first
@@ -195,87 +196,89 @@ def fetch_from_gxu() -> list:
             captcha_input = page.locator("input[name='captcha']:visible, input#captcha:visible, input[placeholder*='验证码']:visible").first
             if captcha_img.count() > 0 and captcha_img.is_visible() and captcha_input.count() > 0 and captcha_input.is_visible():
                 code = try_ocr_captcha(captcha_img.screenshot())
-                print(f"识别到图形验证码: {code}")
                 if code:
                     captcha_input.fill(code)
-            else:
-                print("当前登录页未显示图形验证码，直接提交账号密码。")
 
-            login_btn = page.locator("button[type='submit']:visible, input[type='submit']:visible, .login-btn:visible, #loginBtn:visible, #index_login_btn:visible, a.login_btn:visible").first
-            login_btn.click()
-            page.wait_for_timeout(5000)
-            page.wait_for_load_state("networkidle")
-            print(f"登录后页面 URL: {page.url} | 标题: {page.title()}")
-
-            if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url:
-                err_text = page.locator(".error, .err-msg, #errormsg, .alert-danger").all_inner_texts()
-                raise RuntimeError(f"统一身份认证未通过，当前停留在 {page.url}，页面提示: {err_text}")
-
-        # 第一步：先点「我的培养」菜单
-        py_link = page.locator("a:has-text('我的培养'), span:has-text('我的培养'), li:has-text('我的培养')").first
-        if py_link.count() > 0 and py_link.is_visible():
-            print("点击「我的培养」...")
-            py_link.click()
-            page.wait_for_timeout(3000)
-            page.wait_for_load_state("networkidle")
-
-        # 第二步：在子菜单或页面里找「课表」相关入口
-        kb_link = page.locator("a:has-text('课表'), span:has-text('课表'), li:has-text('课表'), div.title:has-text('课表')").first
-        if kb_link.count() > 0 and kb_link.is_visible():
-            print(f"找到课表入口「{kb_link.inner_text().strip()}」，正在点击进入...")
-            kb_link.click()
+            page.locator("button[type='submit']:visible, input[type='submit']:visible, .login-btn:visible, #loginBtn:visible, #index_login_btn:visible, a.login_btn:visible").first.click()
             page.wait_for_timeout(4000)
             page.wait_for_load_state("networkidle")
-            print(f"进入课表后 URL: {page.url}")
-        else:
-            links = [a.inner_text().strip() for a in page.locator("a:visible").all()[:40]]
-            print("「我的培养」下可见链接:", [x for x in links if x])
 
-        # 收集主页面和所有 iframe 的 HTML 进行解析
-        all_html = [page.content()]
-        for frame in page.frames:
-            try:
-                all_html.append(frame.content())
-            except Exception:
-                pass
+            if "ca.gxu.edu.cn" in page.url or "toLogin" in page.url:
+                raise RuntimeError(f"统一身份认证未通过，当前停留在 {page.url}")
 
-        courses = []
-        for h in all_html:
-            parsed = parse_schedule_html(h)
-            if parsed:
-                courses.extend(parsed)
+        # 跳转到我的课表页面并等待表格数据加载完成
+        if "ckkbOfYjs" not in page.url:
+            page.goto(GXU_KB_URL, timeout=60000)
+            page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(3000)
 
+        # 通过页面同源接口获取当前教学周次与官方调停课记录
+        term_start = os.getenv("TERM_START", "2026-09-07")
+        today = datetime.now().date()
+        monday = today - timedelta(days=today.weekday())
+        sunday = monday + timedelta(days=6)
+        zkb_res = page.evaluate("""async ({ksrq, jsrq}) => {
+            try {
+                const body = new URLSearchParams({type: '2', ksrq, jsrq});
+                const r = await fetch('/tp/yjs/py/pkgl/findZkb2', {method: 'POST', body});
+                return await r.json();
+            } catch (e) { return {}; }
+        }""", {"ksrq": monday.isoformat(), "jsrq": sunday.isoformat()})
+        if zkb_res and str(zkb_res.get("msg", "")).isdigit():
+            cur_wk = int(zkb_res["msg"])
+            term_start = (monday - timedelta(weeks=cur_wk - 1)).isoformat()
+            print(f"官方校历校准成功：本周为第 {cur_wk} 周，第1周周一={term_start}")
+
+        ttk_res = page.evaluate("""async () => {
+            try {
+                const body = new URLSearchParams({draw: '1', start: '0', length: '50'});
+                const r = await fetch('/tp/yjs/py/pkgl/findListByXhPage', {method: 'POST', body});
+                return await r.json();
+            } catch (e) { return {data: []}; }
+        }""")
+        official_ttk = ttk_res.get("data") or ttk_res.get("list") or []
+
+        # 优先从页面已渲染的 #xsDataTable 解析全部课程（含精确周次、星期、节次、教室、教师）
+        courses, max_week = parse_xs_table_from_html(page.content())
         if not courses:
-            print("课表页文本摘要（用于调试）:", page.locator("body").inner_text()[:600].replace("\n", " | "))
+            for frame in page.frames:
+                try:
+                    c, mw = parse_xs_table_from_html(frame.content())
+                    if c:
+                        courses, max_week = c, mw
+                        break
+                except Exception:
+                    pass
 
         browser.close()
-        return courses
+        return courses, official_ttk, term_start, max_week
 
 
 if __name__ == "__main__":
     view_password = os.getenv("VIEW_PASSWORD", "").strip()
-    old_courses, old_logs = [], []
+    old_courses = []
     if CACHE_FILE.exists():
         try:
             old_data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
             if old_data.get("encrypted") and view_password:
                 old_data = decrypt_payload(old_data, view_password)
             old_courses = old_data.get("courses", [])
-            old_logs = old_data.get("change_logs", [])
         except Exception:
             pass
 
-    new_courses = fetch_from_gxu()
+    new_courses, official_ttk, term_start, max_week = fetch_from_gxu()
     if not new_courses:
-        print("登录成功，但暂未在当前页面解析到课表元素，请查看上方打印的页面链接和文本摘要。")
-    else:
-        merged, new_logs = diff_courses(old_courses, new_courses)
-        payload = {
-            "term_start": os.getenv("TERM_START", "2026-09-07"),
-            "updated_at": datetime.utcnow().isoformat() + "Z",
-            "courses": merged,
-            "change_logs": (new_logs + old_logs)[:20]
-        }
-        output_obj = encrypt_payload(payload, view_password) if view_password else payload
-        CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"成功更新 {len(merged)} 门课程（{'已加密' if view_password else '未加密'}）！")
+        raise RuntimeError("未能从官网课表页解析到课程数据。")
+
+    merged, new_logs = diff_courses(old_courses, new_courses, official_ttk)
+    payload = {
+        "term_start": term_start,
+        "total_weeks": max(19, max_week),
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+        "courses": merged,
+        "change_logs": new_logs[:20]
+    }
+    output_obj = encrypt_payload(payload, view_password) if view_password else payload
+    CACHE_FILE.write_text(json.dumps(output_obj, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"成功解析 {len(merged)} 条排课记录（学期共 {payload['total_weeks']} 周，开学周一 {term_start}，{'已加密' if view_password else '未加密'}）！")
+EOF

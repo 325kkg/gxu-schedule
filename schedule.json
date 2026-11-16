@@ -1,7 +1,7 @@
 {
   "term_start": "2026-09-07",
   "total_weeks": 19,
-  "updated_at": "2026-11-15T03:52:21.287641Z",
+  "updated_at": "2026-11-16T01:36:58.106676Z",
   "courses": [
     {
       "id": "gxu_2_5_0_0",
@@ -13,7 +13,7 @@
       "endPeriod": 8,
       "weeks": "3-4,6-8,10",
       "color": "blue",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_5_5_1_1",
@@ -25,7 +25,7 @@
       "endPeriod": 8,
       "weeks": "11-16",
       "color": "blue",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_7_1_2_0",
@@ -37,7 +37,7 @@
       "endPeriod": 8,
       "weeks": "9,11-13",
       "color": "indigo",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_1_3_0",
@@ -49,7 +49,7 @@
       "endPeriod": 8,
       "weeks": "18-19",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_2_11_4_0",
@@ -61,7 +61,7 @@
       "endPeriod": 13,
       "weeks": "3-4,6-13",
       "color": "amber",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_2_11_5_1",
@@ -73,7 +73,7 @@
       "endPeriod": 12,
       "weeks": "14",
       "color": "amber",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_1_6_0",
@@ -85,7 +85,7 @@
       "endPeriod": 4,
       "weeks": "12-17",
       "color": "rose",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_2_1_7_1",
@@ -97,7 +97,7 @@
       "endPeriod": 4,
       "weeks": "15-16",
       "color": "rose",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_7_5_8_0",
@@ -109,7 +109,7 @@
       "endPeriod": 8,
       "weeks": "10",
       "color": "teal",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_6_5_9_1",
@@ -121,7 +121,7 @@
       "endPeriod": 8,
       "weeks": "10,12-14",
       "color": "teal",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_6_11_10_2",
@@ -133,7 +133,7 @@
       "endPeriod": 12,
       "weeks": "14",
       "color": "teal",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_6_11_11_3",
@@ -145,7 +145,7 @@
       "endPeriod": 13,
       "weeks": "15-16",
       "color": "teal",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_6_5_12_4",
@@ -157,7 +157,7 @@
       "endPeriod": 8,
       "weeks": "18",
       "color": "teal",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_4_1_13_0",
@@ -169,7 +169,7 @@
       "endPeriod": 4,
       "weeks": "3,5-10",
       "color": "blue",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_5_1_14_1",
@@ -181,7 +181,7 @@
       "endPeriod": 4,
       "weeks": "5-8",
       "color": "blue",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_5_1_15_2",
@@ -193,7 +193,7 @@
       "endPeriod": 4,
       "weeks": "10",
       "color": "blue",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_4_5_16_0",
@@ -205,7 +205,7 @@
       "endPeriod": 8,
       "weeks": "6-13",
       "color": "indigo",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_5_17_0",
@@ -217,7 +217,7 @@
       "endPeriod": 8,
       "weeks": "6",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_5_18_1",
@@ -229,7 +229,7 @@
       "endPeriod": 8,
       "weeks": "9",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_5_19_2",
@@ -241,7 +241,7 @@
       "endPeriod": 8,
       "weeks": "12",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_1_5_20_3",
@@ -253,7 +253,7 @@
       "endPeriod": 8,
       "weeks": "14-17",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_3_5_21_4",
@@ -265,7 +265,7 @@
       "endPeriod": 8,
       "weeks": "15",
       "color": "emerald",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_1_5_22_0",
@@ -277,7 +277,7 @@
       "endPeriod": 8,
       "weeks": "3-4,6-10",
       "color": "amber",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     },
     {
       "id": "gxu_1_5_23_1",
@@ -289,89 +289,8 @@
       "endPeriod": 8,
       "weeks": "11",
       "color": "amber",
-      "changeNote": "课程时间或周次有更新"
+      "changeNote": ""
     }
   ],
-  "change_logs": [
-    {
-      "time": "11-15 03:52",
-      "message": "《数值分析》周2第5-8节（第3-4,6-8,10周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《数值分析》周5第5-8节（第11-16周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《高电压工程》周7第1-8节（第9,11-13周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《工程伦理》周3第1-8节（第18-19周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《人工智能及其应用》周2第11-13节（第3-4,6-13周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《人工智能及其应用》周2第11-12节（第14周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电力系统分析》周3第1-4节（第12-17周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电力系统分析》周2第1-4节（第15-16周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电网络理论》周7第5-8节（第10周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电网络理论》周6第5-8节（第10,12-14周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电网络理论》周6第11-12节（第14周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电网络理论》周6第11-13节（第15-16周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电网络理论》周6第5-8节（第18周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程专业英语（硕士）》周4第1-4节（第3,5-10周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程专业英语（硕士）》周5第1-4节（第5-8周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程专业英语（硕士）》周5第1-4节（第10周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《现代电力电子技术》周4第5-8节（第6-13周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程学科前沿讲座（一）》周3第5-8节（第6周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程学科前沿讲座（一）》周3第5-8节（第9周）有更新"
-    },
-    {
-      "time": "11-15 03:52",
-      "message": "《电气工程学科前沿讲座（一）》周3第5-8节（第12周）有更新"
-    }
-  ]
+  "change_logs": []
 }

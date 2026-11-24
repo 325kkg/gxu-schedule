@@ -1,7 +1,7 @@
 {
   "term_start": "2026-09-07",
   "total_weeks": 19,
-  "updated_at": "2026-11-22T01:56:23.904279Z",
+  "updated_at": "2026-11-24T05:46:34.941243Z",
   "courses": [
     {
       "id": "gxu_2_5_0_0",
@@ -12,7 +12,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "3-4,6-8,10",
-      "color": "blue",
+      "color": "indigo",
       "changeNote": ""
     },
     {
@@ -24,7 +24,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "11-16",
-      "color": "blue",
+      "color": "indigo",
       "changeNote": ""
     },
     {
@@ -36,7 +36,7 @@
       "startPeriod": 1,
       "endPeriod": 8,
       "weeks": "9,11-13",
-      "color": "indigo",
+      "color": "emerald",
       "changeNote": ""
     },
     {
@@ -48,7 +48,7 @@
       "startPeriod": 1,
       "endPeriod": 8,
       "weeks": "18-19",
-      "color": "emerald",
+      "color": "amber",
       "changeNote": ""
     },
     {
@@ -60,7 +60,7 @@
       "startPeriod": 11,
       "endPeriod": 13,
       "weeks": "3-4,6-13",
-      "color": "amber",
+      "color": "rose",
       "changeNote": ""
     },
     {
@@ -72,7 +72,7 @@
       "startPeriod": 11,
       "endPeriod": 12,
       "weeks": "14",
-      "color": "amber",
+      "color": "rose",
       "changeNote": ""
     },
     {
@@ -84,7 +84,7 @@
       "startPeriod": 1,
       "endPeriod": 4,
       "weeks": "12-17",
-      "color": "rose",
+      "color": "teal",
       "changeNote": ""
     },
     {
@@ -96,7 +96,7 @@
       "startPeriod": 1,
       "endPeriod": 4,
       "weeks": "15-16",
-      "color": "rose",
+      "color": "teal",
       "changeNote": ""
     },
     {
@@ -108,7 +108,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "10",
-      "color": "teal",
+      "color": "blue",
       "changeNote": ""
     },
     {
@@ -120,7 +120,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "10,12-14",
-      "color": "teal",
+      "color": "blue",
       "changeNote": ""
     },
     {
@@ -132,7 +132,7 @@
       "startPeriod": 11,
       "endPeriod": 12,
       "weeks": "14",
-      "color": "teal",
+      "color": "blue",
       "changeNote": ""
     },
     {
@@ -144,7 +144,7 @@
       "startPeriod": 11,
       "endPeriod": 13,
       "weeks": "15-16",
-      "color": "teal",
+      "color": "blue",
       "changeNote": ""
     },
     {
@@ -156,7 +156,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "18",
-      "color": "teal",
+      "color": "blue",
       "changeNote": ""
     },
     {
@@ -168,7 +168,7 @@
       "startPeriod": 1,
       "endPeriod": 4,
       "weeks": "3,5-10",
-      "color": "blue",
+      "color": "indigo",
       "changeNote": ""
     },
     {
@@ -180,7 +180,7 @@
       "startPeriod": 1,
       "endPeriod": 4,
       "weeks": "5-8",
-      "color": "blue",
+      "color": "indigo",
       "changeNote": ""
     },
     {
@@ -192,7 +192,7 @@
       "startPeriod": 1,
       "endPeriod": 4,
       "weeks": "10",
-      "color": "blue",
+      "color": "indigo",
       "changeNote": ""
     },
     {
@@ -204,7 +204,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "6-13",
-      "color": "indigo",
+      "color": "emerald",
       "changeNote": ""
     },
     {
@@ -216,7 +216,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "6",
-      "color": "emerald",
+      "color": "amber",
       "changeNote": ""
     },
     {
@@ -228,7 +228,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "9",
-      "color": "emerald",
+      "color": "amber",
       "changeNote": ""
     },
     {
@@ -240,7 +240,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "12",
-      "color": "emerald",
+      "color": "amber",
       "changeNote": ""
     },
     {
@@ -252,7 +252,7 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "14-17",
-      "color": "emerald",
+      "color": "amber",
       "changeNote": ""
     },
     {
@@ -264,30 +264,6 @@
       "startPeriod": 5,
       "endPeriod": 8,
       "weeks": "15",
-      "color": "emerald",
-      "changeNote": ""
-    },
-    {
-      "id": "gxu_1_5_22_0",
-      "name": "新时代中国特色社会主义理论与实践",
-      "room": "15-107",
-      "teacher": "陈胜锦",
-      "day": 1,
-      "startPeriod": 5,
-      "endPeriod": 8,
-      "weeks": "3-4,6-10",
-      "color": "amber",
-      "changeNote": ""
-    },
-    {
-      "id": "gxu_1_5_23_1",
-      "name": "新时代中国特色社会主义理论与实践",
-      "room": "西2-502",
-      "teacher": "陈胜锦",
-      "day": 1,
-      "startPeriod": 5,
-      "endPeriod": 8,
-      "weeks": "11",
       "color": "amber",
       "changeNote": ""
     }

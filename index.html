@@ -292,7 +292,7 @@
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-bold text-slate-900">同步与隐私设置</h3>
+        <h3 class="text-lg font-bold text-slate-900">同步与隐私设置 <span class="text-xs font-normal text-slate-400">v3.1</span></h3>
         <button id="btnCloseSettings" type="button" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
@@ -1087,6 +1087,7 @@
 
       document.getElementById('btnLockDevice').addEventListener('click', () => {
         state.viewPassword = '';
+        state.githubToken = '';
         state.courses = JSON.parse(JSON.stringify(DEMO_COURSES));
         state.sourceMode = 'demo';
         safeSaveState();

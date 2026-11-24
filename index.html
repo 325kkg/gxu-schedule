@@ -995,6 +995,14 @@
       bindEvents();
       renderAll();
       window.addEventListener('resize', () => renderWeekGrid());
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          syncFromJsonEndpoint(true);
+        }
+      });
+      window.addEventListener('pageshow', (e) => {
+        if (e.persisted) syncFromJsonEndpoint(true);
+      });
       syncFromJsonEndpoint(true);
     });
   </script>

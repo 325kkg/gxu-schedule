@@ -57,9 +57,9 @@
       </div>
 
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <button id="btnRefresh" type="button" title="立即拉取最新课表" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition">
+        <button id="btnRefresh" type="button" title="立即同步最新课表" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs">
           <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          <span class="hidden sm:inline">刷新课表</span>
+          <span id="refreshLabel">更新</span>
         </button>
         <button id="btnChanges" type="button" class="relative inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -304,6 +304,17 @@
       </div>
 
       <div class="space-y-3">
+        <div class="rounded-xl bg-blue-50/70 border border-blue-200 p-3 space-y-2.5">
+          <p class="text-xs font-semibold text-blue-900">一键触发官网实时更新（仅保存在本机，不会上传）</p>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">GitHub 仓库（用户名/仓库名）</label>
+            <input id="cfgGithubRepo" type="text" placeholder="325kkg/gxu-schedule" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">GitHub Token（填入后点「更新」会立刻去学校官网抓取）</label>
+            <input id="cfgGithubToken" type="password" placeholder="ghp_... 或 github_pat_..." class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm" />
+          </div>
+        </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">课表 JSON 地址（留空则自动读取同目录 ./schedule.json）</label>
           <input id="cfgJsonUrl" type="url" placeholder="./schedule.json" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
@@ -381,6 +392,8 @@
       sourceMode: 'demo',
       lastSync: null,
       jsonUrl: '',
+      githubRepo: '325kkg/gxu-schedule',
+      githubToken: '',
       viewPassword: '',
       courses: JSON.parse(JSON.stringify(DEMO_COURSES)),
       changeLogs: [
@@ -765,6 +778,7 @@
               return;
             } catch (err) {
               state.viewPassword = '';
+        state.githubToken = '';
               safeSaveState();
             }
           }
@@ -787,7 +801,126 @@
       }
     }
 
+    let isLiveSyncing = false;
+
+    async function fetchScheduleViaGitHubApi(repo, token) {
+      const res = await fetch(`https://api.github.com/repos/${repo}/contents/schedule.json?ref=main&t=${Date.now()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.raw+json'
+        },
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error(`读取最新课表失败 HTTP ${res.status}`);
+      return await res.json();
+    }
+
+    async function processFetchedScheduleData(data, silent = false) {
+      if (data && data.encrypted) {
+        pendingEncryptedPayload = data;
+        if (state.viewPassword) {
+          try {
+            const decrypted = await decryptSchedulePayload(data, state.viewPassword);
+            applyScheduleData(decrypted, 'github');
+            if (!silent) showToast('已从官网实时同步最新课表');
+            return true;
+          } catch (err) {
+            state.viewPassword = '';
+            safeSaveState();
+          }
+        }
+        document.getElementById('unlockErrorText').classList.add('hidden');
+        document.getElementById('unlockPasswordInput').value = '';
+        document.getElementById('unlockModal').classList.remove('hidden');
+        return true;
+      }
+      const ok = applyScheduleData(data, 'github');
+      if (ok && !silent) showToast('已从官网实时同步最新课表');
+      return ok;
+    }
+
+    async function handleManualUpdate() {
+      const token = (state.githubToken || '').trim();
+      const repo = (state.githubRepo || '325kkg/gxu-schedule').trim();
+      if (!token) {
+        await syncFromJsonEndpoint(false);
+        showToast('已刷新缓存；在「设置」填入 GitHub Token 后点更新可直连官网抓取');
+        return;
+      }
+      if (isLiveSyncing) {
+        showToast('正在从学校官网抓取中，请稍候...');
+        return;
+      }
+      isLiveSyncing = true;
+      const icon = document.getElementById('refreshIcon');
+      const label = document.getElementById('refreshLabel');
+      const syncText = document.getElementById('syncTimeText');
+      icon.classList.add('animate-spin');
+      label.textContent = '抓取中';
+      syncText.textContent = '正在向广西大学官网发起实时抓取...';
+
+      try {
+        const triggerTime = Date.now() - 5000;
+        const dispatchRes = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sync.yml/dispatches`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ref: 'main' })
+        });
+        if (!dispatchRes.ok) {
+          const errMsg = dispatchRes.status === 401 || dispatchRes.status === 403
+            ? 'Token 权限不足或已失效（需开启 Actions 读写权限）'
+            : `触发失败 (HTTP ${dispatchRes.status})`;
+          throw new Error(errMsg);
+        }
+
+        showToast('已触发官网抓取，约需 30–50 秒...');
+        let finishedRun = null;
+        for (let attempt = 0; attempt < 28; attempt++) {
+          await new Promise(r => setTimeout(r, 4000));
+          syncText.textContent = `正在从广西大学官网同步（已等待 ${(attempt + 1) * 4} 秒）...`;
+          const runsRes = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sync.yml/runs?per_page=3&t=${Date.now()}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github+json'
+            },
+            cache: 'no-store'
+          });
+          if (!runsRes.ok) continue;
+          const runsData = await runsRes.json();
+          const matched = (runsData.workflow_runs || []).find(r => new Date(r.created_at).getTime() >= triggerTime);
+          if (matched && matched.status === 'completed') {
+            finishedRun = matched;
+            break;
+          }
+        }
+
+        if (!finishedRun) {
+          throw new Error('抓取等待超时，请稍后再点一次「更新」查看结果');
+        }
+        if (finishedRun.conclusion !== 'success') {
+          throw new Error(`官网抓取未成功（${finishedRun.conclusion}），请在 Actions 查看日志`);
+        }
+
+        syncText.textContent = '抓取完成，正在加载最新课表...';
+        const latestData = await fetchScheduleViaGitHubApi(repo, token);
+        await processFetchedScheduleData(latestData, false);
+      } catch (err) {
+        showToast(err.message || '实时更新失败');
+        renderHeaderStatus();
+      } finally {
+        isLiveSyncing = false;
+        icon.classList.remove('animate-spin');
+        label.textContent = '更新';
+      }
+    }
+
     function openSettingsModal() {
+      document.getElementById('cfgGithubRepo').value = state.githubRepo || '325kkg/gxu-schedule';
+      document.getElementById('cfgGithubToken').value = state.githubToken || '';
       document.getElementById('cfgJsonUrl').value = state.jsonUrl || '';
       document.getElementById('cfgTermStart').value = state.termStart || '2026-09-07';
       document.getElementById('settingsModal').classList.remove('hidden');
@@ -939,11 +1072,17 @@
       document.getElementById('btnCloseSettings').addEventListener('click', () => document.getElementById('settingsModal').classList.add('hidden'));
 
       document.getElementById('btnSaveAndSync').addEventListener('click', () => {
+        state.githubRepo = document.getElementById('cfgGithubRepo').value.trim() || '325kkg/gxu-schedule';
+        state.githubToken = document.getElementById('cfgGithubToken').value.trim();
         state.jsonUrl = document.getElementById('cfgJsonUrl').value.trim();
         state.termStart = document.getElementById('cfgTermStart').value || '2026-09-07';
         safeSaveState();
         document.getElementById('settingsModal').classList.add('hidden');
-        syncFromJsonEndpoint(false);
+        if (state.githubToken) {
+          handleManualUpdate();
+        } else {
+          syncFromJsonEndpoint(false);
+        }
       });
 
       document.getElementById('btnLockDevice').addEventListener('click', () => {
@@ -965,7 +1104,7 @@
         showToast('已恢复示例课表');
       });
 
-      document.getElementById('btnRefresh').addEventListener('click', () => syncFromJsonEndpoint(false));
+      document.getElementById('btnRefresh').addEventListener('click', () => handleManualUpdate());
       document.getElementById('btnExportICS').addEventListener('click', exportICS);
       document.getElementById('btnExportICSModal').addEventListener('click', exportICS);
 
